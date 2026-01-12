@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            // User roles: admin, customer, driver, restaurant_owner
+            $table->enum('role', ['admin', 'customer', 'driver', 'restaurant_owner'])->default('customer');
+            $table->string('phone')->nullable();
+            // Avatar image URL
+            $table->string('avatar')->nullable();
             $table->rememberToken();
             $table->timestamps();
         });
