@@ -13,6 +13,18 @@ use Illuminate\Support\Facades\Validator;
 
 class OrderController extends Controller
 {
+    // Get user orders (My Orders)
+    public function index(Request $request)
+    {
+        // Get user orders with pagination
+        $orders = Order::where('user_id', $request->user()->id)
+            ->with(['restaurant', 'items.product'])
+            ->latest()
+            ->paginate(10);
+
+        return response()->json($orders);
+    }
+
     // Place a new Order
     public function store(Request $request)
     {
