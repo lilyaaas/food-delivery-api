@@ -114,4 +114,60 @@ class OrderController extends Controller
             return response()->json(['message' => $e->getMessage()], 400);
         }
     }
+
+    // Update Order Status (Only Restaurant Owner)
+    public function updateStatus(Request $request, $id)
+    {
+        // 1. Validation
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:pending,accepted,preparing,on_way,delivered,cancelled'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        // 2. Find Order
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        // 3. Authorization: Check if the user is the restaurant owner
+        if ($order->restaurant->owner_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized. Only the restaurant owner can update the status.'], 403);
+        }
+
+        // 4. Update Status
+        $order->update(['status' => $request->status]);
+
+        return response()->json([
+            'message' => 'Order status updated successfully',
+            'status' => $order->status
+        ]);
+    }
+
+    // Get incoming orders for Restaurant Owner
+    public function getRestaurantOrders(Request $request)
+    {
+        // 1. Find Restaurant owned by the user
+        $restaurant = Restaurant::where('owner_id', $request->user()->id)->first();
+
+        if (!$restaurant) {
+            return response()->json(['message' => 'Restaurant not found for this user'], 404);
+        }
+
+        // 2. Get Orders for the Restaurant
+        $orders = Order::where('restaurant_id', $restaurant->id)
+                        ->with(['user', 'items.product'])
+                        // Filter by status if provided
+                        ->when($request->status, function ($query, $status) {
+                            return $query->where('status', $status);
+                        })
+                        ->latest()
+                        ->paginate(10);
+
+        return response()->json($orders);
+    }
 }
